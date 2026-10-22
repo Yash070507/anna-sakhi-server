@@ -202,22 +202,31 @@ if (IS_PROD) {
   });
 }
 
-// ── Start ──────────────────────────────────────────────────
-import { networkInterfaces } from 'os';
+// ── Start (local only — Vercel handles this in serverless mode) ────────────
+// When running on Vercel, the app is exported below and Vercel invokes it.
+// When running locally (node index.js), we start the HTTP server normally.
+const IS_VERCEL = process.env.VERCEL === '1';
 
-function getLanIps() {
-  return Object.values(networkInterfaces())
-    .flat()
-    .filter((i) => i?.family === 'IPv4' && !i.internal)
-    .map((i) => `http://${i.address}:${PORT}`);
+if (!IS_VERCEL) {
+  import('os').then(({ networkInterfaces }) => {
+    function getLanIps() {
+      return Object.values(networkInterfaces())
+        .flat()
+        .filter((i) => i?.family === 'IPv4' && !i.internal)
+        .map((i) => `http://${i.address}:${PORT}`);
+    }
+
+    app.listen(PORT, '0.0.0.0', () => {
+      const lanIps = getLanIps();
+      console.log('\n🌴 Anna Sakhi server running!\n');
+      console.log(`   Local   → http://localhost:${PORT}`);
+      lanIps.forEach((ip) => console.log(`   Network → ${ip}`));
+      console.log(`   API key → ${API_KEY ? '✅ configured' : '❌ NOT SET (check server/.env)'}`);
+      console.log(`   Mode    → ${IS_PROD ? 'production (serving dist/)' : 'development (Vite handles frontend)'}`);
+      console.log('');
+    });
+  });
 }
 
-app.listen(PORT, '0.0.0.0', () => {
-  const lanIps = getLanIps();
-  console.log('\n🌴 Anna Sakhi server running!\n');
-  console.log(`   Local   → http://localhost:${PORT}`);
-  lanIps.forEach((ip) => console.log(`   Network → ${ip}`));
-  console.log(`   API key → ${API_KEY ? '✅ configured' : '❌ NOT SET (check server/.env)'}`);
-  console.log(`   Mode    → ${IS_PROD ? 'production (serving dist/)' : 'development (Vite handles frontend)'}`);
-  console.log('');
-});
+// ── Vercel serverless export ─────────────────────────────────────────────────
+export default app;
